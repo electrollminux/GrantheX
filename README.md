@@ -5,7 +5,7 @@ The name itself is derived from the word Grantha (ग्रन्थ) from Sansk
 ## Features
 * **Local Document Processing:** Uses EasyOCR and PyPDF to read documents entirely on your CPU.
 * **Intelligent RAG:** Powered by ChromaDB for fast vector retrieval and the Groq API (llama-3.3-70b-versatile) for incredibly fast, accurate answers.
-* **Audio Deep Dives:** Automatically generates and synthesizes a 1-minute podcast script summarizing your documents using `gTTS`.
+* **Audio Deep Dives:** Automatically generates and synthesizes a 1~4 minutes podcast script summarizing your documents using `gTTS`.
 * **Interactive UI:** Built with Flask and PyWebview for a native desktop feel, featuring a custom audio scrubber, markdown/LaTeX equation rendering, and a pinboard for saving notes.
 * **Portable Workspaces:** Saves your entire notebook history and databases into shareable `.gex` files.
 
