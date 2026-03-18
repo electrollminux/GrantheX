@@ -1,6 +1,6 @@
 # GrantheX - AI Notebook
 ![icon](https://github.com/electrollminux/GrantheX/blob/main/icon_file.jpeg)
-GrantheX is a small offline-first Desktop application built in Python that acts as an intelligent, RAG-powered notebook. Inspired by Google's NotebookLM, it allows users to upload documents, generate instant summaries, chat with their sources, and even generate fully voiced Audio Deep Dives.
+The name itself is derived from the word Grantha (ग्रन्थ) in Sanskrit refers to a literary work, book, treatise, or binding of verses. GrantheX is a small offline-first Desktop application built in Python that acts as an intelligent, RAG-powered notebook. Inspired by Google's NotebookLM, it allows users to upload documents, generate instant summaries, chat with their sources, and even generate fully voiced Audio Deep Dives.
 
 ## Features
 * **Local Document Processing:** Uses EasyOCR and PyPDF to read documents entirely on your CPU.
