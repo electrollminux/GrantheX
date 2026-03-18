@@ -1,0 +1,10 @@
+flask==3.0.0
+groq==0.4.2
+pypdf==4.0.1
+easyocr==1.7.1
+chromadb==0.4.22
+werkzeug==3.0.1
+pywebview
+gTTS
+httpx==0.27.2
+requests

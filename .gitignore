@@ -1,0 +1,17 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+
+# PyInstaller build folders
+build/
+dist/
+*.spec
+
+# Not uploading my data ;)
+workspaces/
+exports/
+.env

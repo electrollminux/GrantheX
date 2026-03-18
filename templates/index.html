@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrantheX</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        html, body { height: 100vh; overflow: hidden; }
+        
+        /* Chat Scroll & Bubbles */
+        #chat-box { scroll-behavior: smooth; }
+        .msg-container { position: relative; }
+        .msg-actions { 
+            display: none; position: absolute; top: -15px; right: 10px; 
+            background: white; border: 1px solid #ddd; border-radius: 6px; padding: 2px; z-index: 10;
+        }
+        .msg-container:hover .msg-actions { display: block; }
+        
+        /* Fix for Overflowing Math Equations */
+        .markdown-body { 
+            max-width: 100%; overflow-x: auto; word-wrap: break-word;
+        }
+        .markdown-body p { margin-bottom: 0.5em; }
+        mjx-container[jax="CHTML"][display="true"] {
+            overflow-x: auto; overflow-y: hidden; max-width: 100%;
+        }
+
+        /* Saved Notes UI */
+        .note-card {
+            background-color: #fffdf5; /* Slight yellow sticky tint */
+            border-left: 4px solid #ffda6a;
+            position: relative;
+        }
+        .delete-note-btn {
+            position: absolute; top: 5px; right: 5px; display: none;
+        }
+        .note-card:hover .delete-note-btn { display: block; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <div class="col-md-3 bg-white border-end p-3 d-flex flex-column h-100 shadow-sm">
+            <h4 class="mb-4 text-primary fw-bold" onclick="goHome()" style="cursor: pointer;" title="Go to Home">
+                <img src="/favicon.ico" width="24" height="24" class="me-2 rounded">GrantheX
+            </h4>
+            
+            <div class="mb-3">
+                <input type="text" id="new-notebook-name" class="form-control form-control-sm mb-2" placeholder="New Notebook Name">
+                <button class="btn btn-outline-primary btn-sm w-100" onclick="createNotebook()">+ New Notebook</button>
+            </div>
+
+            <h6 class="text-muted mt-3">Your Notebooks</h6>
+            <select id="notebook-select" class="form-select mb-3" onchange="loadNotebook()">
+                <option value="">Select a Notebook...</option>
+                {% for nb in notebooks %}
+                    <option value="{{ nb }}">{{ nb }}</option>
+                {% endfor %}
+            </select>
+
+            <div id="source-panel" class="d-none flex-grow-1 d-flex flex-column">
+                <h6 class="text-muted">Sources</h6>
+                <input type="file" id="file-upload" class="form-control form-control-sm mb-2" accept=".pdf,.png,.jpg,.jpeg">
+                <button class="btn btn-primary btn-sm w-100 mb-3" onclick="uploadSource()">Upload Source</button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mt-auto" onclick="exportNotebook()">Export as .gex</button>
+            </div>
+        </div>
+
+        <div class="col-md-9 p-0 d-flex flex-column h-100">
+            <div id="chat-header" class="p-3 bg-white border-bottom shadow-sm d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-muted" id="current-notebook-title">Select a notebook to start</h5>
+                
+                <div id="audio-panel" class="d-none d-flex align-items-center gap-2">
+                    <div id="custom-player-ui" class="d-none align-items-center bg-light border rounded px-2 py-1 shadow-sm" style="min-width: 280px;">
+                        <audio id="podcast-player" class="d-none"></audio>
+                        <button id="play-pause-btn" class="btn btn-sm btn-primary rounded-circle p-0 me-2 d-flex justify-content-center align-items-center" style="width: 28px; height: 28px;" onclick="toggleAudio()">
+                            <span id="play-icon" style="margin-left: 2px;">▶</span>
+                        </button>
+                        <span id="audio-current-time" class="small text-muted me-2" style="font-variant-numeric: tabular-nums; width: 35px; text-align: right;">0:00</span>
+                        <input type="range" id="audio-scrubber" class="form-range flex-grow-1 mx-2" value="0" min="0" step="1" style="height: 0.5rem; cursor: pointer;">
+                        <span id="audio-duration" class="small text-muted" style="font-variant-numeric: tabular-nums; width: 35px;">0:00</span>
+                    </div>
+                    <button class="btn btn-sm btn-warning fw-bold" id="generate-audio-btn" onclick="generateAudio()">🎧 Generate Deep Dive</button>
+                </div>
+            </div>
+            
+            <div class="row m-0 flex-grow-1 overflow-hidden">
+                <div class="col-md-8 p-4 overflow-auto bg-light h-100 d-flex flex-column" id="chat-container">
+                    <div id="chat-box" class="flex-grow-1">
+                        <div class="text-center text-muted mt-5">
+                            <p>Welcome to GrantheX. Upload a document and start asking questions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 p-0 bg-white border-start h-100 d-flex flex-column" id="right-sidebar">
+                    
+                    <ul class="nav nav-tabs px-3 pt-3 bg-light border-bottom-0" id="sidebarTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-2" id="guide-tab" onclick="switchTab('guide')">Guide</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2" id="notes-tab" onclick="switchTab('notes')">📌 Notes</button>
+                        </li>
+                    </ul>
+
+                    <div id="guide-panel" class="p-4 overflow-auto flex-grow-1">
+                        <h6 class="text-primary fw-bold">Source Guide</h6>
+                        <p class="text-muted small" id="guide-summary">Upload a document to generate a summary.</p>
+                        <hr>
+                        <h6 class="text-muted">Suggested Questions</h6>
+                        <div id="guide-questions" class="d-flex flex-column gap-2">
+                            <span class="text-muted small">No questions yet.</span>
+                        </div>
+                    </div>
+
+                    <div id="notes-panel" class="p-3 overflow-auto flex-grow-1 d-none bg-light">
+                        <div class="input-group mb-3 shadow-sm">
+                            <textarea id="new-note-text" class="form-control" placeholder="Write a new note..." rows="2"></textarea>
+                            <button class="btn btn-primary" onclick="addCustomNote()">Save</button>
+                        </div>
+                        <div id="notes-container" class="d-flex flex-column gap-3">
+                            <div class="text-center text-muted small mt-4">No saved notes yet. Pin responses from the chat!</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <div class="p-3 bg-white border-top">
+                <div class="input-group">
+                    <input type="text" id="chat-input" class="form-control shadow-sm" placeholder="Ask about your sources..." disabled>
+                    <button class="btn btn-primary shadow-sm" id="send-btn" onclick="sendMessage()" disabled>Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>
