@@ -1,46 +1,74 @@
 import os
-import sys
 import zipfile
 import threading
 import requests
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 
 # --- CONFIGURATION ---
 APP_NAME = "GrantheX"
 # You will update this URL later once you upload your zip to GitHub Releases
 DOWNLOAD_URL = "https://github.com/electrollminux/GrantheX/releases/download/v1.0/GrantheX_App.zip" 
 
-# Install to AppData/Local so we don't need Admin permissions!
-INSTALL_DIR = os.path.join(os.environ.get('LOCALAPPDATA'), APP_NAME)
+# Default install directory (User can now change this in the UI)
+DEFAULT_DIR = os.path.join(os.environ.get('LOCALAPPDATA'), APP_NAME)
 ZIP_PATH = os.path.join(os.environ.get('TEMP'), f"{APP_NAME}_download.zip")
 
 class InstallerApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"{APP_NAME} Setup")
-        self.root.geometry("450x250")
+        self.root.geometry("500x300")
         self.root.resizable(False, False)
         
-        # UI Elements
+        # Title
         self.title_label = tk.Label(root, text=f"Installing {APP_NAME}", font=("Helvetica", 16, "bold"))
-        self.title_label.pack(pady=20)
+        self.title_label.pack(pady=(20, 10))
         
+        # --- NEW: Path Selection UI ---
+        self.path_frame = tk.Frame(root)
+        self.path_frame.pack(pady=5, padx=30, fill="x")
+        
+        tk.Label(self.path_frame, text="Install Location:", font=("Helvetica", 9, "bold")).pack(anchor="w")
+        
+        self.install_path_var = tk.StringVar(value=DEFAULT_DIR)
+        self.path_entry = tk.Entry(self.path_frame, textvariable=self.install_path_var, font=("Helvetica", 9), bg="#f8f9fa")
+        self.path_entry.pack(side="left", fill="x", expand=True, ipady=4, padx=(0, 10))
+        
+        self.browse_btn = tk.Button(self.path_frame, text="Browse...", command=self.browse_folder, bg="#e9ecef")
+        self.browse_btn.pack(side="right")
+        # ------------------------------
+
         self.status_label = tk.Label(root, text="Click 'Install' to begin downloading.", font=("Helvetica", 10))
-        self.status_label.pack(pady=5)
+        self.status_label.pack(pady=(15, 5))
         
-        self.progress = ttk.Progressbar(root, orient="horizontal", length=350, mode="determinate")
-        self.progress.pack(pady=10)
+        self.progress = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate")
+        self.progress.pack(pady=5)
         
-        self.install_btn = tk.Button(root, text="Install", command=self.start_installation, width=15, bg="#0d6efd", fg="white", font=("Helvetica", 10, "bold"))
-        self.install_btn.pack(pady=10)
+        self.install_btn = tk.Button(root, text="Install", command=self.start_installation, width=20, bg="#0d6efd", fg="white", font=("Helvetica", 10, "bold"))
+        self.install_btn.pack(pady=15)
+
+    def browse_folder(self):
+        """Opens a native dialog to let the user pick an install folder."""
+        selected_dir = filedialog.askdirectory(initialdir=os.environ.get('LOCALAPPDATA'), title="Select Installation Folder")
+        if selected_dir:
+            # Append the app name to the selected folder so it doesn't spill files everywhere
+            full_path = os.path.normpath(os.path.join(selected_dir, APP_NAME))
+            self.install_path_var.set(full_path)
 
     def start_installation(self):
+        # Lock the UI
         self.install_btn.config(state=tk.DISABLED)
+        self.browse_btn.config(state=tk.DISABLED)
+        self.path_entry.config(state=tk.DISABLED)
         self.progress['value'] = 0
+        
+        # Start background thread
         threading.Thread(target=self.download_and_extract, daemon=True).start()
 
     def download_and_extract(self):
+        install_dir = self.install_path_var.get()
+        
         try:
             # 1. Download the Zip
             self.status_label.config(text="Downloading GrantheX... (This may take a while)")
@@ -64,37 +92,39 @@ class InstallerApp:
             self.progress.config(mode="indeterminate")
             self.progress.start()
             
-            os.makedirs(INSTALL_DIR, exist_ok=True)
+            os.makedirs(install_dir, exist_ok=True)
             with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-                zip_ref.extractall(INSTALL_DIR)
+                zip_ref.extractall(install_dir)
                 
-            # Clean up temp zip
             os.remove(ZIP_PATH)
 
             # 3. Create Desktop Shortcut
             self.status_label.config(text="Creating shortcuts...")
-            self.create_desktop_shortcut()
+            self.create_desktop_shortcut(install_dir)
 
             self.progress.stop()
             self.progress.config(mode="determinate")
             self.progress['value'] = 100
             self.status_label.config(text="Installation Complete!")
             
-            messagebox.showinfo("Success", f"{APP_NAME} has been installed to your Desktop!")
+            messagebox.showinfo("Success", f"{APP_NAME} has been installed successfully!")
             self.root.quit()
 
         except Exception as e:
             self.progress.stop()
             self.status_label.config(text="Installation Failed.")
             messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            
+            # Unlock the UI so they can try again
             self.install_btn.config(state=tk.NORMAL)
+            self.browse_btn.config(state=tk.NORMAL)
+            self.path_entry.config(state=tk.NORMAL)
 
-    def create_desktop_shortcut(self):
-        """Uses a dynamic VBScript to create a shortcut without needing extra pip libraries"""
+    def create_desktop_shortcut(self, install_dir):
         desktop = os.path.join(os.environ.get('USERPROFILE'), 'Desktop')
         shortcut_path = os.path.join(desktop, f"{APP_NAME}.lnk")
-        target_path = os.path.join(INSTALL_DIR, "app", "app.exe") # PyInstaller's output folder
-        icon_path = os.path.join(INSTALL_DIR, "app", "icon.ico")
+        target_path = os.path.join(install_dir, "app", "app.exe") 
+        icon_path = os.path.join(install_dir, "app", "icon.ico")
         
         vbs_script = f"""
         Set oWS = WScript.CreateObject("WScript.Shell")
@@ -102,7 +132,7 @@ class InstallerApp:
         Set oLink = oWS.CreateShortcut(sLinkFile)
         oLink.TargetPath = "{target_path}"
         oLink.IconLocation = "{icon_path}"
-        oLink.WorkingDirectory = "{os.path.join(INSTALL_DIR, 'app')}"
+        oLink.WorkingDirectory = "{os.path.join(install_dir, 'app')}"
         oLink.Save
         """
         
