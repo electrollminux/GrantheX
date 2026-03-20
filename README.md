@@ -10,7 +10,7 @@ The name itself is derived from the word Grantha (ग्रन्थ) from Sansk
 * **Portable Workspaces:** Saves your entire notebook history and databases into shareable `.gex` files.
 
 ##  How to Run from Source
-1. Clone this repository: `git clone https://github.com/YOUR_USERNAME/GrantheX.git`
+1. Clone this repository: `git clone https://github.com/electrollminux/GrantheX.git`
 2. Install dependencies: `pip install -r requirements.txt`
 3. Run the application: `python app.py`
 
